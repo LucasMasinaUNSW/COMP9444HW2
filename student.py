@@ -29,12 +29,14 @@ from torchtext.vocab import GloVe
 ### The following determines the processing of input data (review text) ###
 ###########################################################################
 
+
 def preprocessing(sample):
     """
     Called after tokenising but before numericalising.
     """
 
     return sample
+
 
 def postprocessing(batch, vocab):
     """
@@ -50,6 +52,7 @@ wordVectors = GloVe(name='6B', dim=50)
 ##### The following determines the processing of label data (ratings) #####
 ###########################################################################
 
+
 def convertLabel(datasetLabel):
     """
     Labels (product ratings) from the dataset are provided to you as
@@ -60,6 +63,7 @@ def convertLabel(datasetLabel):
     """
 
     return datasetLabel
+
 
 def convertNetOutput(netOutput):
     """
@@ -76,6 +80,7 @@ def convertNetOutput(netOutput):
 ################### The following determines the model ####################
 ###########################################################################
 
+
 class network(tnn.Module):
     """
     Class for creating the neural network.  The input to your network
@@ -90,6 +95,7 @@ class network(tnn.Module):
     def forward(self, input, length):
         pass
 
+
 class loss(tnn.Module):
     """
     Class for creating a custom loss function, if desired.
@@ -101,6 +107,7 @@ class loss(tnn.Module):
 
     def forward(self, output, target):
         pass
+
 
 net = network()
 """
