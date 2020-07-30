@@ -27,7 +27,7 @@ def main():
     labelField = data.Field(sequential=False, use_vocab=False, is_target=True)
 
     dataset = data.TabularDataset('train.json', 'json',
-                                 {'reviewText': ('reviewText', textField),
+                                  {'reviewText': ('reviewText', textField),
                                   'rating': ('rating', labelField)})
 
     textField.build_vocab(dataset, vectors=student.wordVectors)
