@@ -18,7 +18,7 @@ The variable device may be used to refer to the CPU/GPU being used by PyTorch.
 You may only use GloVe 6B word vectors as found in the torchtext package.
 """
 
-# import torch
+import torch
 import torch.nn as tnn
 import torch.optim as toptim
 from torchtext.vocab import GloVe
@@ -34,7 +34,7 @@ def preprocessing(sample):
     """
     Called after tokenising but before numericalising.
     """
-
+    # need to handle padding? i.e. ignore useless words added to keep the length of reviews the same?
     return sample
 
 
@@ -91,9 +91,11 @@ class network(tnn.Module):
 
     def __init__(self):
         super(network, self).__init__()
+        self.test = tnn.Parameter(torch.zeros(5, 2))
 
     def forward(self, input, length):
-        pass
+        print("Input: ", input.size(), " Length: ", length.size())
+        return None
 
 
 class loss(tnn.Module):
