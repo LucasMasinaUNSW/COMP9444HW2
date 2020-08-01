@@ -20,10 +20,12 @@ You may only use GloVe 6B word vectors as found in the torchtext package.
 
 import torch
 import torch.nn as tnn
+# import torch.nn.functional as F
 import torch.optim as toptim
 from torchtext.vocab import GloVe
 # import numpy as np
 # import sklearn
+
 
 ###########################################################################
 ### The following determines the processing of input data (review text) ###
@@ -46,7 +48,8 @@ def postprocessing(batch, vocab):
     return batch
 
 stopWords = {}
-wordVectors = GloVe(name='6B', dim=50)
+wordVectorDimension = 50
+wordVectors = GloVe(name='6B', dim=wordVectorDimension)
 
 ###########################################################################
 ##### The following determines the processing of label data (ratings) #####
@@ -91,24 +94,48 @@ class network(tnn.Module):
 
     def __init__(self):
         super(network, self).__init__()
-        self.test = tnn.Parameter(torch.zeros(5, 2))
+        self.test = tnn.Parameter(torch.zeros(5, 2))    # TODO figure out what to do with tnn.Parameter
+
+        hidden_dim = 100
+        num_layers = 2
+        out_dim = 5
+        self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers)
+        self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
+        self.act = tnn.Sigmoid()    # TODO maybe Softmax?
 
     def forward(self, input, length):
-        print("Input: ", input.size(), " Length: ", length.size())
-        return None
+        # input is 32 batches of length number of vectors with size 50
+        # length is 32 max lengths of reviews
+        # print("Input: ", input, " Length: ", length)
+        # print("Input test: ", wordVectors[input[0][0][0]])
+        # print("Word vector test: ", wordVectors["test"])
+
+        embedded = input
+        # embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True)    # Ignores padded inputs
+
+        output, (hidden, cell) = self.lstm(embedded)
+
+        hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
+        dense_outputs = self.linear(hidden)
+
+        outputs = self.act(dense_outputs)
+        print("outputs: ", outputs)
+
+        return outputs
 
 
-class loss(tnn.Module):
-    """
-    Class for creating a custom loss function, if desired.
-    You may remove/comment out this class if you are not using it.
-    """
-
-    def __init__(self):
-        super(loss, self).__init__()
-
-    def forward(self, output, target):
-        pass
+# TODO Implement custom loss function probably
+# class loss(tnn.Module):
+#     """
+#     Class for creating a custom loss function, if desired.
+#     You may remove/comment out this class if you are not using it.
+#     """
+#
+#     def __init__(self):
+#         super(loss, self).__init__()
+#
+#     def forward(self, output, target):
+#         pass
 
 
 net = network()
