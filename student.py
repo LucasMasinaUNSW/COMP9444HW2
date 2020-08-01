@@ -112,8 +112,7 @@ class network(tnn.Module):
         # print("Input test: ", wordVectors[input[0][0][0]])
         # print("Word vector test: ", wordVectors["test"])
 
-        embedded = input
-        # embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True)    # Ignores padded inputs
+        embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True)    # Ignores padded inputs
         # print("embedded size: ", embedded.size())
 
         output, (hidden, cell) = self.lstm(embedded)
