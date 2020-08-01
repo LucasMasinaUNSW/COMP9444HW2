@@ -99,43 +99,50 @@ class network(tnn.Module):
         hidden_dim = 100
         num_layers = 2
         out_dim = 5
-        self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers)
+        self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
         self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
         self.act = tnn.Sigmoid()    # TODO maybe Softmax?
 
     def forward(self, input, length):
-        # input is 32 batches of length number of vectors with size 50
-        # length is 32 max lengths of reviews
-        # print("Input: ", input, " Length: ", length)
+        # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
+        # length: [batch_size (e.g. 32)]                                                        - max lengths of reviews
+        print("Input: ", input.size(), " Length: ", length.size())
         # print("Input test: ", wordVectors[input[0][0][0]])
         # print("Word vector test: ", wordVectors["test"])
 
         embedded = input
         # embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True)    # Ignores padded inputs
+        print("embedded size: ", embedded.size())
 
         output, (hidden, cell) = self.lstm(embedded)
+        # print("output size: ", output.size())
+        print("pre hidden size: ", hidden.size())
+        # print("cell size: ", cell.size())
 
         hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
+        print("post hidden size: ", hidden.size())
+
         dense_outputs = self.linear(hidden)
+        # print("dense outputs size: ", dense_outputs.size())
 
         outputs = self.act(dense_outputs)
-        print("outputs: ", outputs)
+        print("outputs size: ", outputs.size())
 
         return outputs
 
 
 # TODO Implement custom loss function probably
-# class loss(tnn.Module):
-#     """
-#     Class for creating a custom loss function, if desired.
-#     You may remove/comment out this class if you are not using it.
-#     """
-#
-#     def __init__(self):
-#         super(loss, self).__init__()
-#
-#     def forward(self, output, target):
-#         pass
+class loss(tnn.Module):
+    """
+    Class for creating a custom loss function, if desired.
+    You may remove/comment out this class if you are not using it.
+    """
+
+    def __init__(self):
+        super(loss, self).__init__()
+
+    def forward(self, output, target):
+        pass
 
 
 net = network()
@@ -143,7 +150,9 @@ net = network()
     Loss function for the model. You may use loss functions found in
     the torch package, or create your own with the loss class above.
 """
-lossFunc = loss()
+# TODO use this for custom loss function
+# lossFunc = loss()
+lossFunc = tnn.CrossEntropyLoss()
 
 ###########################################################################
 ################ The following determines training options ################
