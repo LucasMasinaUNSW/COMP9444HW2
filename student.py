@@ -20,7 +20,7 @@ You may only use GloVe 6B word vectors as found in the torchtext package.
 
 import torch
 import torch.nn as tnn
-# import torch.nn.functional as F
+import torch.nn.functional as F
 import torch.optim as toptim
 from torchtext.vocab import GloVe
 # import numpy as np
@@ -101,7 +101,7 @@ class network(tnn.Module):
         out_dim = 5
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
         self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
-        self.act = tnn.Sigmoid()    # TODO maybe Softmax?
+        #self.act = tnn.Sigmoid()    # TODO maybe Softmax?
 
     def forward(self, input, length):
         # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
@@ -115,7 +115,8 @@ class network(tnn.Module):
 
         dense_outputs = self.linear(hidden)
 
-        outputs = self.act(dense_outputs)
+        # outputs = self.act(dense_outputs)
+        outputs = F.log_softmax(dense_outputs)
 
         return outputs
 
