@@ -124,7 +124,7 @@ class network(tnn.Module):
     def __init__(self):
         super(network, self).__init__()
 
-        hidden_dim = 150
+        hidden_dim = 170
         num_layers = 1
         out_dim = 5
         drop_rate = 0.1
@@ -184,4 +184,4 @@ lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparen
 trainValSplit = 0.8
 batchSize = 32
 epochs = 10
-optimiser = toptim.SGD(net.parameters(), lr=0.12, momentum=0.92)
+optimiser = toptim.SGD(net.parameters(), lr=0.05, momentum=0.7)
