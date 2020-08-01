@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
 """
+z5204754
+
+Question:
+- chose to use LSTM
+    - thought long term memory was useful
+    - given that the inputs are sentences, the context of a word within a sentence greatly affects
+        the meaning of it and its more about finding the 'tone' of the review
+    - more complicated but allowed for more refinement
+
+- ignore padded inputs
+- preprocessing:
+    - removing punctuation
+    - removing special characters
+- dropout
+- remove common and uncommon words i.e. stop words
+- fiddling with num of hidden nodes, learning rate, momentum
+
+"""
+
+
+"""
 student.py
 
 UNSW COMP9444 Neural Networks and Deep Learning
@@ -148,7 +169,7 @@ class network(tnn.Module):
 
         outputs = self.linear(hidden)                                                 # [32, 5]
 
-        # outputs = F.log_softmax(dense_outputs, dim=1)
+        # outputs = F.log_softmax(outputs, dim=1)   # shouldn't need with tnn.CrossEntropyLoss()
 
         return outputs
 
