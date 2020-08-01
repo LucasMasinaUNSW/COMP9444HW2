@@ -26,6 +26,10 @@ from torchtext.vocab import GloVe
 # import numpy as np
 # import sklearn
 
+# TODO check if can use the below packages
+import re
+import string
+
 
 ###########################################################################
 ### The following determines the processing of input data (review text) ###
@@ -37,7 +41,16 @@ def preprocessing(sample):
     Called after tokenising but before numericalising.
     """
     # TODO ignore common words (e.g. the, a etc.), maybe also infrequent words
-    return sample
+
+    # remove punctuation, special characters
+    input = " ".join(sample)
+    text = re.sub(r"[^\x00-\x7F]+", " ", input)
+    regex = re.compile('[' + re.escape(string.punctuation) + '0-9\\r\\t\\n]')  # remove punctuation and numbers
+    nopunct = regex.sub(" ", text.lower())
+    result = nopunct.split(" ")
+    result = list(filter(lambda x: x != '', result))
+    # print(result)
+    return result
 
 
 def postprocessing(batch, vocab):
@@ -99,14 +112,13 @@ class network(tnn.Module):
         num_layers = 2
         out_dim = 5
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
-        self.linear = tnn.Linear(in_features=2*hidden_dim, out_features=out_dim)
-        # self.act = tnn.Sigmoid()    # maybe Softmax?
+        self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
 
     def forward(self, input, length):
         # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
         # length: [batch_size (e.g. 32)]                                                        - max lengths of reviews
 
-        embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True)    # Ignores padded inputs
+        embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True, enforce_sorted=False)    # Ignores padded inputs
 
         output, (hidden, cell) = self.lstm(embedded)
 
@@ -114,7 +126,6 @@ class network(tnn.Module):
 
         dense_outputs = self.linear(hidden)                                                 # [32, 5]
 
-        # outputs = self.act(dense_outputs)
         outputs = F.log_softmax(dense_outputs, dim=1)
 
         return outputs
@@ -141,8 +152,8 @@ net = network()
     the torch package, or create your own with the loss class above.
 """
 # lossFunc = loss()     # TODO use this for custom loss function
-# lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
-lossFunc = tnn.NLLLoss()
+lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
+# lossFunc = tnn.NLLLoss()
 
 ###########################################################################
 ################ The following determines training options ################
