@@ -36,7 +36,7 @@ def preprocessing(sample):
     """
     Called after tokenising but before numericalising.
     """
-    # need to handle padding? i.e. ignore useless words added to keep the length of reviews the same?
+    # TODO ignore common words (e.g. the, a etc.), maybe also infrequent words
     return sample
 
 
@@ -94,14 +94,13 @@ class network(tnn.Module):
 
     def __init__(self):
         super(network, self).__init__()
-        self.test = tnn.Parameter(torch.zeros(5, 2))    # TODO figure out what to do with tnn.Parameter if anything (used in optimiser)
 
         hidden_dim = 100
         num_layers = 2
         out_dim = 5
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
-        self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
-        #self.act = tnn.Sigmoid()    # TODO maybe Softmax?
+        self.linear = tnn.Linear(in_features=2*hidden_dim, out_features=out_dim)
+        # self.act = tnn.Sigmoid()    # maybe Softmax?
 
     def forward(self, input, length):
         # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
@@ -113,10 +112,10 @@ class network(tnn.Module):
 
         hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
 
-        dense_outputs = self.linear(hidden)
+        dense_outputs = self.linear(hidden)                                                 # [32, 5]
 
         # outputs = self.act(dense_outputs)
-        outputs = F.log_softmax(dense_outputs)
+        outputs = F.log_softmax(dense_outputs, dim=1)
 
         return outputs
 
@@ -132,7 +131,8 @@ class network(tnn.Module):
 #         super(loss, self).__init__()
 #
 #     def forward(self, output, target):
-#         pass
+#         pass      # Maybe implement cost = -T.mean(target * T.log(y_vals)+ (1.- target) * T.log(1. - y_vals)) where T is tnn
+
 
 
 net = network()
@@ -140,9 +140,9 @@ net = network()
     Loss function for the model. You may use loss functions found in
     the torch package, or create your own with the loss class above.
 """
-# TODO use this for custom loss function
-# lossFunc = loss()
-lossFunc = tnn.CrossEntropyLoss()
+# lossFunc = loss()     # TODO use this for custom loss function
+# lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
+lossFunc = tnn.NLLLoss()
 
 ###########################################################################
 ################ The following determines training options ################
@@ -151,4 +151,4 @@ lossFunc = tnn.CrossEntropyLoss()
 trainValSplit = 0.8
 batchSize = 32
 epochs = 10
-optimiser = toptim.SGD(net.parameters(), lr=0.01)
+optimiser = toptim.SGD(net.parameters(), lr=0.1)
