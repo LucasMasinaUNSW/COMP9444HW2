@@ -29,6 +29,8 @@ from torchtext.vocab import GloVe
 # TODO check if can use the below packages
 import re
 import string
+# import spacy
+import nltk
 
 
 ###########################################################################
@@ -40,8 +42,6 @@ def preprocessing(sample):
     """
     Called after tokenising but before numericalising.
     """
-    # TODO ignore common words (e.g. the, a etc.), maybe also infrequent words
-
     # remove punctuation, special characters
     input = " ".join(sample)
     text = re.sub(r"[^\x00-\x7F]+", " ", input)
@@ -57,10 +57,26 @@ def postprocessing(batch, vocab):
     """
     Called after numericalisation but before vectorisation.
     """
+    # print("batch: ", batch)
+    # print("vocab: ", vocab)
 
+    # TODO ignore common words (e.g. the, a etc.), maybe also infrequent words
+    # sample_frequencies = dict()
+    # for x in enumerate(vocab):
+    #     f = sample_frequencies.get(x)
+    #     if f:
+    #         sample_frequencies[x] = f + 1
+    #     else:
+    #         sample_frequencies[x] = 1
+    #
     return batch
 
-stopWords = {}
+
+# spacy.load('en_core_web_sm')
+# stopWords = spacy.lang.en.stop_words.STOP_WORDS
+nltk.download('stopwords')
+stopWords = {} # nltk.corpus.stopwords.words('english')
+
 wordVectorDimension = 200
 wordVectors = GloVe(name='6B', dim=wordVectorDimension)
 
@@ -108,7 +124,7 @@ class network(tnn.Module):
     def __init__(self):
         super(network, self).__init__()
 
-        hidden_dim = 100
+        hidden_dim = 150
         num_layers = 1
         out_dim = 5
         drop_rate = 0.1
@@ -168,4 +184,4 @@ lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparen
 trainValSplit = 0.8
 batchSize = 32
 epochs = 10
-optimiser = toptim.SGD(net.parameters(), lr=0.11, momentum=0.9)
+optimiser = toptim.SGD(net.parameters(), lr=0.12, momentum=0.92)
