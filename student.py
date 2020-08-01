@@ -109,7 +109,7 @@ class network(tnn.Module):
         super(network, self).__init__()
 
         hidden_dim = 100
-        num_layers = 2
+        num_layers = 1
         out_dim = 5
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
         self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
@@ -122,11 +122,12 @@ class network(tnn.Module):
 
         output, (hidden, cell) = self.lstm(embedded)
 
-        hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
+        # hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
+        hidden = hidden[-1]
 
-        dense_outputs = self.linear(hidden)                                                 # [32, 5]
+        outputs = self.linear(hidden)                                                 # [32, 5]
 
-        outputs = F.log_softmax(dense_outputs, dim=1)
+        # outputs = F.log_softmax(dense_outputs, dim=1)
 
         return outputs
 
@@ -162,4 +163,4 @@ lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparen
 trainValSplit = 0.8
 batchSize = 32
 epochs = 10
-optimiser = toptim.SGD(net.parameters(), lr=0.1)
+optimiser = toptim.SGD(net.parameters(), lr=0.1, momentum=0.9)
