@@ -61,7 +61,7 @@ def postprocessing(batch, vocab):
     return batch
 
 stopWords = {}
-wordVectorDimension = 50
+wordVectorDimension = 200
 wordVectors = GloVe(name='6B', dim=wordVectorDimension)
 
 ###########################################################################
@@ -111,14 +111,19 @@ class network(tnn.Module):
         hidden_dim = 100
         num_layers = 1
         out_dim = 5
+        drop_rate = 0.1
+
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
         self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
+        self.dropout = tnn.Dropout(drop_rate)
 
     def forward(self, input, length):
         # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
         # length: [batch_size (e.g. 32)]                                                        - max lengths of reviews
 
-        embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True, enforce_sorted=False)    # Ignores padded inputs
+        dropped = self.dropout(input)
+
+        embedded = tnn.utils.rnn.pack_padded_sequence(dropped, length, batch_first=True, enforce_sorted=False)    # Ignores padded inputs
 
         output, (hidden, cell) = self.lstm(embedded)
 
@@ -163,4 +168,4 @@ lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparen
 trainValSplit = 0.8
 batchSize = 32
 epochs = 10
-optimiser = toptim.SGD(net.parameters(), lr=0.1, momentum=0.9)
+optimiser = toptim.SGD(net.parameters(), lr=0.11, momentum=0.9)
