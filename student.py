@@ -64,8 +64,9 @@ def convertLabel(datasetLabel):
     to convert them to another representation in this function.
     Consider regression vs classification.
     """
-
-    return datasetLabel
+    out = datasetLabel.long() - 1   # Necessary since for each label: 0 <= label < n_classes and label needs to be of type long (requirement of criterion)
+    # print("converted labels: ", out)
+    return out
 
 
 def convertNetOutput(netOutput):
@@ -76,8 +77,9 @@ def convertNetOutput(netOutput):
     If your network outputs a different representation or any float
     values other than the five mentioned, convert the output here.
     """
-
-    return netOutput
+    out = (torch.argmax(netOutput, dim=1) + 1).float()  # Gets the index of the highest probability, adds 1 then converts to float
+    # print("netOuput: ", netOutput, "\nout: ", out)
+    return out
 
 ###########################################################################
 ################### The following determines the model ####################
@@ -106,27 +108,27 @@ class network(tnn.Module):
     def forward(self, input, length):
         # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
         # length: [batch_size (e.g. 32)]                                                        - max lengths of reviews
-        print("Input: ", input.size(), " Length: ", length.size())
+        # print("Input: ", input.size(), " Length: ", length.size())
         # print("Input test: ", wordVectors[input[0][0][0]])
         # print("Word vector test: ", wordVectors["test"])
 
         embedded = input
         # embedded = tnn.utils.rnn.pack_padded_sequence(input, length, batch_first=True)    # Ignores padded inputs
-        print("embedded size: ", embedded.size())
+        # print("embedded size: ", embedded.size())
 
         output, (hidden, cell) = self.lstm(embedded)
         # print("output size: ", output.size())
-        print("pre hidden size: ", hidden.size())
+        # print("pre hidden size: ", hidden.size())
         # print("cell size: ", cell.size())
 
         hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
-        print("post hidden size: ", hidden.size())
+        # print("post hidden size: ", hidden.size())
 
         dense_outputs = self.linear(hidden)
         # print("dense outputs size: ", dense_outputs.size())
 
         outputs = self.act(dense_outputs)
-        print("outputs size: ", outputs.size())
+        # print("outputs size: ", outputs.size())
 
         return outputs
 
