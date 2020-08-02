@@ -96,7 +96,7 @@ def postprocessing(batch, vocab):
 # spacy.load('en_core_web_sm')
 # stopWords = spacy.lang.en.stop_words.STOP_WORDS
 nltk.download('stopwords')
-stopWords = {} # nltk.corpus.stopwords.words('english')
+stopWords = {}   # nltk.corpus.stopwords.words('english')
 
 wordVectorDimension = 200
 wordVectors = GloVe(name='6B', dim=wordVectorDimension)
@@ -145,7 +145,7 @@ class network(tnn.Module):
     def __init__(self):
         super(network, self).__init__()
 
-        hidden_dim = 75
+        hidden_dim = 250
         num_layers = 1
         out_dim = 5
         drop_rate = 0.1
