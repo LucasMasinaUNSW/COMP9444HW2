@@ -74,6 +74,7 @@ def preprocessing(sample):
     nopunct = regex.sub(" ", text.lower())
     result = nopunct.split(" ")
     result = list(filter(lambda x: x != '', result))
+
     # print(result)
     return result
 
@@ -83,24 +84,28 @@ def postprocessing(batch, vocab):
     Called after numericalisation but before vectorisation.
     """
     # print("batch: ", batch)
-    # print("vocab: ", vocab)
+    # print("vocab: ", vocab.freqs)
 
-    # TODO ignore common words (e.g. the, a etc.), maybe also infrequent words
-    # sample_frequencies = dict()
-    # for x in enumerate(vocab):
-    #     f = sample_frequencies.get(x)
-    #     if f:
-    #         sample_frequencies[x] = f + 1
-    #     else:
-    #         sample_frequencies[x] = 1
-    #
+    # Remove infrequent words from batch
+    vocabCount = vocab.freqs
+    vocabITOS = vocab.itos
+
+    for i, x in enumerate(batch):
+        for j, y in enumerate(x):
+            if vocabCount[vocabITOS[y]] < 3:
+                x[j] = -1
+        # batch[i] = list(filter(lambda a: (vocabCount[vocabITOS[a]] > 2), x))
+
+    # print("new batch: ", batch)
     return batch
 
 
 # spacy.load('en_core_web_sm')
 # stopWords = spacy.lang.en.stop_words.STOP_WORDS
 nltk.download('stopwords')
-stopWords = {}   # nltk.corpus.stopwords.words('english')
+# stopWords = nltk.corpus.stopwords.words('english')[:77]
+# print("stopWords: ", stopWords)
+stopWords = {}
 
 wordVectorDimension = 200
 wordVectors = GloVe(name='6B', dim=wordVectorDimension)
@@ -118,7 +123,7 @@ def convertLabel(datasetLabel):
     to convert them to another representation in this function.
     Consider regression vs classification.
     """
-    out = datasetLabel - 1   # Necessary since for each label: 0 <= label < n_classes and label needs to be of type long (requirement of criterion)
+    out = datasetLabel.long() - 1   # Necessary since for each label: 0 <= label < n_classes and label needs to be of type long (requirement of criterion)
     return out
 
 
@@ -130,8 +135,8 @@ def convertNetOutput(netOutput):
     If your network outputs a different representation or any float
     values other than the five mentioned, convert the output here.
     """
-    # out = (torch.argmax(netOutput, dim=1) + 1).float()  # Gets the index of the highest probability, adds 1 then converts to float
-    out = torch.round((netOutput + 1).float())
+    out = (torch.argmax(netOutput, dim=1) + 1).float()  # Gets the index of the highest probability, adds 1 then converts to float
+    # out = torch.round((netOutput + 1).float())
     return out
 
 ###########################################################################
@@ -150,31 +155,26 @@ class network(tnn.Module):
     def __init__(self):
         super(network, self).__init__()
 
-        hidden_dim = 250
+        hidden_dim = 200
         num_layers = 1
-        out_dim = 1
-        drop_rate = 0.1
+        out_dim = 5
+        drop_rate = 0.2
 
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
         self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
         self.dropout = tnn.Dropout(drop_rate)
 
     def forward(self, input, length):
-        # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
-        # length: [batch_size (e.g. 32)]                                                        - max lengths of reviews
-
         embedded = self.dropout(input)
         embedded = tnn.utils.rnn.pack_padded_sequence(embedded, length, batch_first=True, enforce_sorted=False)    # Ignores padded inputs
-
         output, (hidden, cell) = self.lstm(embedded)
 
         # hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
         hidden = hidden[-1]
 
-        outputs = self.linear(hidden)                                                 # [32, 5]
+        outputs = self.linear(hidden)
 
-        # outputs = F.log_softmax(outputs, dim=1)   # shouldn't need with tnn.CrossEntropyLoss()
-        return outputs.view(-1,)
+        return outputs
 
 
 # TODO Implement custom loss function probably
@@ -197,9 +197,8 @@ net = network()
     the torch package, or create your own with the loss class above.
 """
 # lossFunc = loss()     # TODO use this for custom loss function
-# lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
-# lossFunc = tnn.NLLLoss()
-lossFunc = tnn.MSELoss()
+lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
+# lossFunc = tnn.MSELoss()
 
 ###########################################################################
 ################ The following determines training options ################
@@ -208,4 +207,4 @@ lossFunc = tnn.MSELoss()
 trainValSplit = 0.8
 batchSize = 32
 epochs = 10
-optimiser = toptim.SGD(net.parameters(), lr=0.05, momentum=0)
+optimiser = toptim.SGD(net.parameters(), lr=0.08, momentum=0.8)
