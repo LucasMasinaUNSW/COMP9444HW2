@@ -16,6 +16,10 @@ Question:
 - dropout
 - remove common and uncommon words i.e. stop words
 - fiddling with num of hidden nodes, learning rate, momentum
+- attempted to use a regression model using MSELoss instead of classification with CrossEntropy
+    and noticed that the network was less likely to make a prediction further away (i.e. 3 or 4 stars away),
+    it was also less likely to correctly predict and more likely to predict one star away, reducing the overall
+    weighted score.
 
 """
 
@@ -114,7 +118,7 @@ def convertLabel(datasetLabel):
     to convert them to another representation in this function.
     Consider regression vs classification.
     """
-    out = datasetLabel.long() - 1   # Necessary since for each label: 0 <= label < n_classes and label needs to be of type long (requirement of criterion)
+    out = datasetLabel - 1   # Necessary since for each label: 0 <= label < n_classes and label needs to be of type long (requirement of criterion)
     return out
 
 
@@ -126,7 +130,8 @@ def convertNetOutput(netOutput):
     If your network outputs a different representation or any float
     values other than the five mentioned, convert the output here.
     """
-    out = (torch.argmax(netOutput, dim=1) + 1).float()  # Gets the index of the highest probability, adds 1 then converts to float
+    # out = (torch.argmax(netOutput, dim=1) + 1).float()  # Gets the index of the highest probability, adds 1 then converts to float
+    out = torch.round((netOutput + 1).float())
     return out
 
 ###########################################################################
@@ -147,7 +152,7 @@ class network(tnn.Module):
 
         hidden_dim = 250
         num_layers = 1
-        out_dim = 5
+        out_dim = 1
         drop_rate = 0.1
 
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
@@ -158,9 +163,8 @@ class network(tnn.Module):
         # input:  [batch_size (e.g. 32), num_vectors, vector_dim=wordVectorDimension (e.g. 50)] - embeddings
         # length: [batch_size (e.g. 32)]                                                        - max lengths of reviews
 
-        dropped = self.dropout(input)
-
-        embedded = tnn.utils.rnn.pack_padded_sequence(dropped, length, batch_first=True, enforce_sorted=False)    # Ignores padded inputs
+        embedded = self.dropout(input)
+        embedded = tnn.utils.rnn.pack_padded_sequence(embedded, length, batch_first=True, enforce_sorted=False)    # Ignores padded inputs
 
         output, (hidden, cell) = self.lstm(embedded)
 
@@ -170,8 +174,7 @@ class network(tnn.Module):
         outputs = self.linear(hidden)                                                 # [32, 5]
 
         # outputs = F.log_softmax(outputs, dim=1)   # shouldn't need with tnn.CrossEntropyLoss()
-
-        return outputs
+        return outputs.view(-1,)
 
 
 # TODO Implement custom loss function probably
@@ -194,8 +197,9 @@ net = network()
     the torch package, or create your own with the loss class above.
 """
 # lossFunc = loss()     # TODO use this for custom loss function
-lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
+# lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
 # lossFunc = tnn.NLLLoss()
+lossFunc = tnn.MSELoss()
 
 ###########################################################################
 ################ The following determines training options ################
@@ -204,4 +208,4 @@ lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparen
 trainValSplit = 0.8
 batchSize = 32
 epochs = 10
-optimiser = toptim.SGD(net.parameters(), lr=0.07, momentum=0.8)
+optimiser = toptim.SGD(net.parameters(), lr=0.05, momentum=0)
