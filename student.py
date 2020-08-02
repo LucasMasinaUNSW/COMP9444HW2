@@ -23,7 +23,6 @@ Question:
 
 """
 
-
 """
 student.py
 
@@ -45,7 +44,6 @@ You may only use GloVe 6B word vectors as found in the torchtext package.
 
 import torch
 import torch.nn as tnn
-import torch.nn.functional as F
 import torch.optim as toptim
 from torchtext.vocab import GloVe
 # import numpy as np
@@ -54,8 +52,6 @@ from torchtext.vocab import GloVe
 # TODO check if can use the below packages
 import re
 import string
-# import spacy
-import nltk
 
 
 ###########################################################################
@@ -67,15 +63,13 @@ def preprocessing(sample):
     """
     Called after tokenising but before numericalising.
     """
-    # remove punctuation, special characters
+    # Remove punctuation, special characters
     input = " ".join(sample)
     text = re.sub(r"[^\x00-\x7F]+", " ", input)
     regex = re.compile('[' + re.escape(string.punctuation) + '0-9\\r\\t\\n]')  # remove punctuation and numbers
     nopunct = regex.sub(" ", text.lower())
     result = nopunct.split(" ")
     result = list(filter(lambda x: x != '', result))
-
-    # print(result)
     return result
 
 
@@ -83,9 +77,6 @@ def postprocessing(batch, vocab):
     """
     Called after numericalisation but before vectorisation.
     """
-    # print("batch: ", batch)
-    # print("vocab: ", vocab.freqs)
-
     # Remove infrequent words from batch
     vocabCount = vocab.freqs
     vocabITOS = vocab.itos
@@ -93,22 +84,15 @@ def postprocessing(batch, vocab):
     for i, x in enumerate(batch):
         for j, y in enumerate(x):
             if vocabCount[vocabITOS[y]] < 3:
-                x[j] = -1
-        # batch[i] = list(filter(lambda a: (vocabCount[vocabITOS[a]] > 2), x))
-
-    # print("new batch: ", batch)
+                x[j] = 0
     return batch
 
 
-# spacy.load('en_core_web_sm')
-# stopWords = spacy.lang.en.stop_words.STOP_WORDS
-nltk.download('stopwords')
-# stopWords = nltk.corpus.stopwords.words('english')[:77]
-# print("stopWords: ", stopWords)
 stopWords = {}
 
 wordVectorDimension = 200
 wordVectors = GloVe(name='6B', dim=wordVectorDimension)
+
 
 ###########################################################################
 ##### The following determines the processing of label data (ratings) #####
@@ -123,7 +107,8 @@ def convertLabel(datasetLabel):
     to convert them to another representation in this function.
     Consider regression vs classification.
     """
-    out = datasetLabel.long() - 1   # Necessary since for each label: 0 <= label < n_classes and label needs to be of type long (requirement of criterion)
+    # Convert
+    out = datasetLabel.long() - 1
     return out
 
 
@@ -135,9 +120,9 @@ def convertNetOutput(netOutput):
     If your network outputs a different representation or any float
     values other than the five mentioned, convert the output here.
     """
-    out = (torch.argmax(netOutput, dim=1) + 1).float()  # Gets the index of the highest probability, adds 1 then converts to float
-    # out = torch.round((netOutput + 1).float())
+    out = (torch.argmax(netOutput, dim=1) + 1).float()
     return out
+
 
 ###########################################################################
 ################### The following determines the model ####################
@@ -161,44 +146,24 @@ class network(tnn.Module):
         drop_rate = 0.2
 
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
-        self.linear = tnn.Linear(in_features=num_layers*hidden_dim, out_features=out_dim)
+        self.linear = tnn.Linear(in_features=num_layers * hidden_dim, out_features=out_dim)
         self.dropout = tnn.Dropout(drop_rate)
 
     def forward(self, input, length):
         embedded = self.dropout(input)
-        embedded = tnn.utils.rnn.pack_padded_sequence(embedded, length, batch_first=True, enforce_sorted=False)    # Ignores padded inputs
+        embedded = tnn.utils.rnn.pack_padded_sequence(embedded, length, batch_first=True, enforce_sorted=True)
         output, (hidden, cell) = self.lstm(embedded)
 
         # hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
         hidden = hidden[-1]
 
         outputs = self.linear(hidden)
-
         return outputs
 
 
-# TODO Implement custom loss function probably
-# class loss(tnn.Module):
-#     """
-#     Class for creating a custom loss function, if desired.
-#     You may remove/comment out this class if you are not using it.
-#     """
-#
-#     def __init__(self):
-#         super(loss, self).__init__()
-#
-#     def forward(self, output, target):
-#         pass      # Maybe implement cost = -T.mean(target * T.log(y_vals)+ (1.- target) * T.log(1. - y_vals)) where T is tnn
-
-
 net = network()
-"""
-    Loss function for the model. You may use loss functions found in
-    the torch package, or create your own with the loss class above.
-"""
-# lossFunc = loss()     # TODO use this for custom loss function
-lossFunc = tnn.CrossEntropyLoss()     # shouldn't use with log_softmax() apparently since its already used within
-# lossFunc = tnn.MSELoss()
+
+lossFunc = tnn.CrossEntropyLoss()
 
 ###########################################################################
 ################ The following determines training options ################
