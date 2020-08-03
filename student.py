@@ -152,7 +152,7 @@ class network(tnn.Module):
         embedded = self.dropout(input)
 
         # Ignore padded inputs
-        packed_input = tnn.utils.rnn.pack_padded_sequence(embedded, length, batch_first=True, enforce_sorted=True)
+        packed_input = tnn.utils.rnn.pack_padded_sequence(embedded, length, batch_first=True, enforce_sorted=False)
 
         # Run through LSTM
         output, (hidden, cell) = self.lstm(packed_input)
