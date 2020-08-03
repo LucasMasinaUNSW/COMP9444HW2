@@ -76,7 +76,7 @@ def postprocessing(batch, vocab):
     for sentence in batch:
         for j, word in enumerate(sentence):
             if vocabCount[vocabITOS[word]] < 3:
-                sentence[j] = 0
+                sentence[j] = -1
     return batch
 
 
