@@ -45,7 +45,11 @@ You may only use GloVe 6B word vectors as found in the torchtext package.
 import torch
 import torch.nn as tnn
 import torch.optim as toptim
+from sklearn.feature_extraction import text
 from torchtext.vocab import GloVe
+from nltk.stem.porter import PorterStemmer
+from torch.nn.utils.rnn import pad_sequence
+import torch.nn.functional as F
 # import numpy as np
 # import sklearn
 
@@ -70,6 +74,10 @@ def preprocessing(sample):
     nopunct = regex.sub(" ", text.lower())
     result = nopunct.split(" ")
     result = list(filter(lambda x: x != '', result))
+    #stemmer = PorterStemmer()
+    #result = [stemmer.stem(token) for token in result]
+
+    #print(result)
     return result
 
 
@@ -88,10 +96,13 @@ def postprocessing(batch, vocab):
     return batch
 
 
+# stopWords = {text.ENGLISH_STOP_WORDS}
+
 stopWords = {}
 
+max_vocab = 150
 wordVectorDimension = 200
-wordVectors = GloVe(name='6B', dim=wordVectorDimension)
+wordVectors = GloVe(name='6B', dim=wordVectorDimension, max_vectors= max_vocab)
 
 
 ###########################################################################
@@ -145,24 +156,53 @@ class network(tnn.Module):
         out_dim = 5
         drop_rate = 0.2
 
+        self.conv1 = tnn.Conv1d(max_vocab, 128,5)
+
+        self.pool1 = tnn.MaxPool1d(5) #drop resultion to allow for more filter layers
+
+        """self.conv2 = tnn.Conv1D(128, 128, 5)
+
+        self.pool2 = tnn.MaxPool1d(5) #drop resultion to allow for more filter layers
+
+        self.conv3 = tnn.Conv1D(128, 128, 5)
+
+        self.pool3 = tnn.MaxPool1d(35) #drop resultion to allow for more filter layers
+        
+
+        self.dense = tnn.Linear(45, out_dim)"""
+        
+
         self.lstm = tnn.LSTM(input_size=wordVectorDimension, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True)
         self.linear = tnn.Linear(in_features=num_layers * hidden_dim, out_features=out_dim)
         self.dropout = tnn.Dropout(drop_rate)
 
     def forward(self, input, length):
+        #add CNN, add batch normalisation
+        print("shape: ", input.shape)
+        #input_pad = pad_sequence([input])
+        #print("shape_pad: ", input_pad.shape)
+        input = F.pad(input, (0, 0, 0 ,max_vocab - input.shape[1] ) ,"constant",0)
+        print("shape: ", input.shape)
+
         embedded = self.dropout(input)
         embedded = tnn.utils.rnn.pack_padded_sequence(embedded, length, batch_first=True, enforce_sorted=True)
+        print(embedded.data.shape)
+    
         output, (hidden, cell) = self.lstm(embedded)
 
         # hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
         hidden = hidden[-1]
 
         outputs = self.linear(hidden)
+        outputs = torch.softmax(outputs, dim = 1)
         return outputs
 
 
 net = network()
-
+"""
+    Loss function for the model. You may use loss functions found in
+    the torch package, or create your own with the loss class above.
+"""
 lossFunc = tnn.CrossEntropyLoss()
 
 ###########################################################################
